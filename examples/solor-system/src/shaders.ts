@@ -187,6 +187,8 @@ struct VertexOutput {
   @location(1)       color   : vec3<f32>,
 };
 
+@group(0) @binding(0) var<uniform> global : GlobalUniforms;
+
 const QUAD_POS = array<vec2<f32>, 6>(
   vec2(-1.0, -1.0), vec2(1.0, -1.0), vec2(1.0, 1.0),
   vec2(-1.0, -1.0), vec2(1.0, 1.0),  vec2(-1.0, 1.0)

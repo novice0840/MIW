@@ -29,8 +29,8 @@ export function generateSphere(latBands: number, longBands: number): Mesh {
     for (let lon = 0; lon < longBands; lon++) {
       const first = lat * (longBands + 1) + lon;
       const second = first + longBands + 1;
-      idxs.push(first, second, first + 1);
-      idxs.push(second, second + 1, first + 1);
+      idxs.push(first, first + 1, second);
+      idxs.push(second, first + 1, second + 1);
     }
   }
 

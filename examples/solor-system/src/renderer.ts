@@ -46,6 +46,12 @@ export class Renderer {
   private starVB!: GPUBuffer;
   private starCount = 0;
 
+  // Per-pipeline bind groups (created once at init, not per-frame)
+  private orbitGlobalBG!: GPUBindGroup;
+  private ringGlobalBG!: GPUBindGroup;
+  private ringObjBG!: GPUBindGroup;
+  private starGlobalBG!: GPUBindGroup;
+
   async init(canvas: HTMLCanvasElement) {
     const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
     if (!adapter) throw new Error('No WebGPU adapter');
@@ -244,6 +250,24 @@ export class Renderer {
         }),
       );
     }
+
+    // Per-pipeline global bind groups
+    this.orbitGlobalBG = this.device.createBindGroup({
+      layout: this.orbitPipeline.getBindGroupLayout(0),
+      entries: [{ binding: 0, resource: { buffer: this.globalUniformBuffer } }],
+    });
+    this.ringGlobalBG = this.device.createBindGroup({
+      layout: this.ringPipeline.getBindGroupLayout(0),
+      entries: [{ binding: 0, resource: { buffer: this.globalUniformBuffer } }],
+    });
+    this.ringObjBG = this.device.createBindGroup({
+      layout: this.ringPipeline.getBindGroupLayout(1),
+      entries: [{ binding: 0, resource: { buffer: this.objectUniformBuffers[1 + PLANETS.length] } }],
+    });
+    this.starGlobalBG = this.device.createBindGroup({
+      layout: this.starPipeline.getBindGroupLayout(0),
+      entries: [{ binding: 0, resource: { buffer: this.globalUniformBuffer } }],
+    });
   }
 
   private createBuffer(data: ArrayBufferView, usage: number): GPUBuffer {
@@ -385,41 +409,24 @@ export class Renderer {
     // --- Transparent pass ---
 
     // Orbit lines
-    // Create orbit bind group compatible with orbit pipeline layout
-    const orbitGlobalBG = this.device.createBindGroup({
-      layout: this.orbitPipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: { buffer: this.globalUniformBuffer } }],
-    });
     pass.setPipeline(this.orbitPipeline);
-    pass.setBindGroup(0, orbitGlobalBG);
+    pass.setBindGroup(0, this.orbitGlobalBG);
     for (let i = 0; i < PLANETS.length; i++) {
       pass.setVertexBuffer(0, this.orbitVBs[i]);
       pass.draw(this.orbitVertCounts[i]);
     }
 
     // Saturn ring
-    const ringGlobalBG = this.device.createBindGroup({
-      layout: this.ringPipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: { buffer: this.globalUniformBuffer } }],
-    });
-    const ringObjBG = this.device.createBindGroup({
-      layout: this.ringPipeline.getBindGroupLayout(1),
-      entries: [{ binding: 0, resource: { buffer: this.objectUniformBuffers[1 + PLANETS.length] } }],
-    });
     pass.setPipeline(this.ringPipeline);
-    pass.setBindGroup(0, ringGlobalBG);
-    pass.setBindGroup(1, ringObjBG);
+    pass.setBindGroup(0, this.ringGlobalBG);
+    pass.setBindGroup(1, this.ringObjBG);
     pass.setVertexBuffer(0, this.ringVB);
     pass.setIndexBuffer(this.ringIB, 'uint16');
     pass.drawIndexed(this.ringIndexCount);
 
     // Stars
-    const starGlobalBG = this.device.createBindGroup({
-      layout: this.starPipeline.getBindGroupLayout(0),
-      entries: [{ binding: 0, resource: { buffer: this.globalUniformBuffer } }],
-    });
     pass.setPipeline(this.starPipeline);
-    pass.setBindGroup(0, starGlobalBG);
+    pass.setBindGroup(0, this.starGlobalBG);
     pass.setVertexBuffer(0, this.starVB);
     pass.draw(6, this.starCount);
 
