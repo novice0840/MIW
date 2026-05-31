@@ -1,6 +1,6 @@
 # 학습 체크리스트
 
-- [ ] block.ts
+- [x] block.ts
 - [ ] camera.ts
 - [ ] main.ts
 - [ ] math.ts
