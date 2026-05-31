@@ -4,8 +4,6 @@ export const enum BlockType {
   Dirt = 2,
   Stone = 3,
   Sand = 4,
-  Wood = 6,
-  Leaves = 7,
   Snow = 8,
 }
 
@@ -37,16 +35,6 @@ export const BLOCK_COLORS: Record<number, BlockColors> = {
     top: [0.86, 0.82, 0.62],
     side: [0.82, 0.78, 0.58],
     bottom: [0.78, 0.74, 0.54],
-  },
-  [BlockType.Wood]: {
-    top: [0.60, 0.45, 0.25],
-    side: [0.45, 0.30, 0.15],
-    bottom: [0.60, 0.45, 0.25],
-  },
-  [BlockType.Leaves]: {
-    top: [0.20, 0.50, 0.15],
-    side: [0.18, 0.45, 0.13],
-    bottom: [0.15, 0.40, 0.10],
   },
   [BlockType.Snow]: {
     top: [0.95, 0.95, 0.97],
