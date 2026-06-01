@@ -1,7 +1,6 @@
 // Simplex-like 2D noise for terrain generation
 // Based on improved Perlin noise
 
-const P = new Uint8Array(512);
 const PERM = [
   151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
   8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,
@@ -17,10 +16,7 @@ const PERM = [
   176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,
   128,195,78,66,215,61,156,180,
 ];
-for (let i = 0; i < 256; i++) {
-  P[i] = PERM[i];
-  P[256 + i] = PERM[i];
-}
+const P = new Uint8Array([...PERM, ...PERM]);
 
 function fade(t: number): number {
   return t * t * t * (t * (t * 6 - 15) + 10);
