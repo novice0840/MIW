@@ -38,6 +38,10 @@ function lerp(a: number, b: number, t: number): number {
   return a + t * (b - a);
 }
 
+/**
+ * @description h 값에 따라 x,y의 부호를 조합하여 4개의 대각선 방향 벡터 중 하나를 반환한다.
+ * @returns x+y or x-y or -x+y or -x-y
+ */
 function grad2d(hash: number, x: number, y: number): number {
   const h = hash & 3;
   const u = h < 2 ? x : -x;
@@ -45,19 +49,22 @@ function grad2d(hash: number, x: number, y: number): number {
   return u + v;
 }
 
-export function noise2d(x: number, y: number): number {
+function noise2d(x: number, y: number): number {
+  // 0 ~ 255 사이의 정수
   const xi = Math.floor(x) & 255;
   const yi = Math.floor(y) & 255;
+  // x, y의 소수 부분
   const xf = x - Math.floor(x);
   const yf = y - Math.floor(y);
 
+  // fade 함수는 smoothstep 곡선으로, 소수 좌표를 부드럽게 변형
   const u = fade(xf);
   const v = fade(yf);
 
-  const aa = P[P[xi] + yi];
-  const ab = P[P[xi] + yi + 1];
-  const ba = P[P[xi + 1] + yi];
-  const bb = P[P[xi + 1] + yi + 1];
+  const aa = P[P[xi] + yi]; // (0,0) 좌하단
+  const ab = P[P[xi] + yi + 1]; // (0,1) 좌상단
+  const ba = P[P[xi + 1] + yi]; // (1,0) 우하단
+  const bb = P[P[xi + 1] + yi + 1]; // (1,1) 우상단
 
   return lerp(
     lerp(grad2d(aa, xf, yf), grad2d(ba, xf - 1, yf), u),
