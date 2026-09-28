@@ -5,6 +5,7 @@ import HIGHLIGHT_WGSL from './shaders/highlight.wgsl';
 import { Player } from './player';
 import { CHUNK_SIZE, FLOATS_PER_VERTEX, chunkKey } from './chunk';
 import { World } from './world';
+import { ATLAS_URL } from './block';
 
 const GLOBAL_UNIFORM_SIZE = 128; // viewProj(64) + cameraPos(12+4) + sunDir(12+4) + fogColor(12+4) + fogDensity(4+12pad)
 
@@ -31,9 +32,6 @@ const CUBE_EDGES = new Float32Array([
 // 외곽선이 블록 표면과 정확히 겹치면 z-fighting으로 선이 깜빡인다.
 // 큐브를 아주 살짝 부풀려 표면보다 앞에 오게 한다.
 const HIGHLIGHT_EXPAND = 0.002;
-
-// public/ 아래 파일은 빌드 결과물 루트에 그대로 복사된다. 상대 경로라 배포 base 경로가 달라도 동작한다.
-const ATLAS_URL = 'textures/atlas.png';
 
 /**
  * @description 청크(chunk) 하나를 화면에 그리는 데 필요한 GPU 정보를 묶은 구조

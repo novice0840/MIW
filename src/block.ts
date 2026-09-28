@@ -39,6 +39,10 @@ export const BLOCK_NAMES: Record<number, string> = {
  */
 export const ATLAS_GRID = 4;
 
+// public/ 아래 파일은 빌드 결과물 루트에 그대로 복사된다. 상대 경로라 배포 base 경로가 달라도 동작한다.
+// 렌더러(WebGPU 텍스처)와 핫바(CSS 배경)가 같은 이미지를 쓴다.
+export const ATLAS_URL = 'textures/atlas.png';
+
 const enum Tile {
   GrassTop = 0,
   GrassSide = 1,
@@ -67,52 +71,6 @@ export const BLOCK_TILES: Record<number, BlockTiles> = {
   [BlockType.Wood]: { top: Tile.WoodTop, side: Tile.WoodSide, bottom: Tile.WoodTop },
   [BlockType.Leaves]: uniform(Tile.Leaves),
   [BlockType.Snow]: uniform(Tile.Snow),
-};
-
-// 핫바 슬롯 전용 대표색 [top, side, bottom].
-// 월드 렌더링은 BLOCK_TILES의 텍스처를 쓰고, 핫바를 타일로 바꾸는 건 별도 이슈로 남겨둔다.
-export interface BlockColors {
-  top: [number, number, number];
-  side: [number, number, number];
-  bottom: [number, number, number];
-}
-
-export const BLOCK_COLORS: Record<number, BlockColors> = {
-  [BlockType.Grass]: {
-    top: [0.36, 0.63, 0.2],
-    side: [0.36, 0.5, 0.2],
-    bottom: [0.55, 0.37, 0.24],
-  },
-  [BlockType.Dirt]: {
-    top: [0.55, 0.37, 0.24],
-    side: [0.55, 0.37, 0.24],
-    bottom: [0.55, 0.37, 0.24],
-  },
-  [BlockType.Stone]: {
-    top: [0.55, 0.55, 0.55],
-    side: [0.5, 0.5, 0.5],
-    bottom: [0.45, 0.45, 0.45],
-  },
-  [BlockType.Sand]: {
-    top: [0.86, 0.82, 0.62],
-    side: [0.82, 0.78, 0.58],
-    bottom: [0.78, 0.74, 0.54],
-  },
-  [BlockType.Wood]: {
-    top: [0.6, 0.45, 0.25],
-    side: [0.45, 0.3, 0.15],
-    bottom: [0.6, 0.45, 0.25],
-  },
-  [BlockType.Leaves]: {
-    top: [0.2, 0.5, 0.15],
-    side: [0.18, 0.45, 0.13],
-    bottom: [0.15, 0.4, 0.1],
-  },
-  [BlockType.Snow]: {
-    top: [0.95, 0.95, 0.97],
-    side: [0.9, 0.9, 0.92],
-    bottom: [0.85, 0.85, 0.87],
-  },
 };
 
 export function isTransparent(block: BlockType): boolean {
