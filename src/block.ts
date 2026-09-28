@@ -31,8 +31,46 @@ export const BLOCK_NAMES: Record<number, string> = {
   [BlockType.Snow]: 'Snow',
 };
 
-// RGB colors for each block type [top, side, bottom]
-// Each face can have a different color (e.g., grass top is green, side has brown+green, bottom is dirt)
+/**
+ * @description 아틀라스(public/textures/atlas.png)의 타일 번호
+ *
+ * 아틀라스는 16px 타일이 4x4로 놓인 한 장의 이미지이고, 번호는 row * 4 + col 순서다.
+ * 순서는 tools/gen-textures.mjs의 LAYOUT이 정하므로 둘을 함께 바꿔야 한다.
+ */
+export const ATLAS_GRID = 4;
+
+const enum Tile {
+  GrassTop = 0,
+  GrassSide = 1,
+  Dirt = 2,
+  Stone = 3,
+  Sand = 4,
+  WoodTop = 5,
+  WoodSide = 6,
+  Leaves = 7,
+  Snow = 8,
+}
+
+export interface BlockTiles {
+  top: number;
+  side: number;
+  bottom: number;
+}
+
+const uniform = (tile: Tile): BlockTiles => ({ top: tile, side: tile, bottom: tile });
+
+export const BLOCK_TILES: Record<number, BlockTiles> = {
+  [BlockType.Grass]: { top: Tile.GrassTop, side: Tile.GrassSide, bottom: Tile.Dirt },
+  [BlockType.Dirt]: uniform(Tile.Dirt),
+  [BlockType.Stone]: uniform(Tile.Stone),
+  [BlockType.Sand]: uniform(Tile.Sand),
+  [BlockType.Wood]: { top: Tile.WoodTop, side: Tile.WoodSide, bottom: Tile.WoodTop },
+  [BlockType.Leaves]: uniform(Tile.Leaves),
+  [BlockType.Snow]: uniform(Tile.Snow),
+};
+
+// 핫바 슬롯 전용 대표색 [top, side, bottom].
+// 월드 렌더링은 BLOCK_TILES의 텍스처를 쓰고, 핫바를 타일로 바꾸는 건 별도 이슈로 남겨둔다.
 export interface BlockColors {
   top: [number, number, number];
   side: [number, number, number];

@@ -3,7 +3,7 @@ import BLOCK_WGSL from './shaders/block.wgsl';
 import SKY_WGSL from './shaders/sky.wgsl';
 import HIGHLIGHT_WGSL from './shaders/highlight.wgsl';
 import { Player } from './player';
-import { CHUNK_SIZE, chunkKey } from './chunk';
+import { CHUNK_SIZE, FLOATS_PER_VERTEX, chunkKey } from './chunk';
 import { World } from './world';
 
 const GLOBAL_UNIFORM_SIZE = 128; // viewProj(64) + cameraPos(12+4) + sunDir(12+4) + fogColor(12+4) + fogDensity(4+12pad)
@@ -31,6 +31,9 @@ const CUBE_EDGES = new Float32Array([
 // 외곽선이 블록 표면과 정확히 겹치면 z-fighting으로 선이 깜빡인다.
 // 큐브를 아주 살짝 부풀려 표면보다 앞에 오게 한다.
 const HIGHLIGHT_EXPAND = 0.002;
+
+// public/ 아래 파일은 빌드 결과물 루트에 그대로 복사된다. 상대 경로라 배포 base 경로가 달라도 동작한다.
+const ATLAS_URL = 'textures/atlas.png';
 
 /**
  * @description 청크(chunk) 하나를 화면에 그리는 데 필요한 GPU 정보를 묶은 구조
@@ -68,6 +71,7 @@ export class Renderer {
   private globalUniformBuffer!: GPUBuffer;
   private globalBindGroup!: GPUBindGroup;
   private highlightBindGroup!: GPUBindGroup;
+  private atlasBindGroup!: GPUBindGroup;
 
   private chunkMeshes = new Map<string, ChunkMesh>();
   world!: World;
@@ -88,6 +92,7 @@ export class Renderer {
     this.createDepthTexture(canvas.width, canvas.height);
     this.createPipelines();
     this.createUniformBuffers();
+    await this.createAtlas();
 
     this.world = new World();
   }
@@ -157,6 +162,7 @@ export class Renderer {
     // Blocks
     pass.setPipeline(this.blockPipeline);
     pass.setBindGroup(0, this.globalBindGroup);
+    pass.setBindGroup(1, this.atlasBindGroup);
 
     const ccx = Math.floor(player.position[0] / CHUNK_SIZE);
     const ccz = Math.floor(player.position[2] / CHUNK_SIZE);
@@ -252,11 +258,11 @@ export class Renderer {
         entryPoint: 'vs_main',
         buffers: [
           {
-            arrayStride: 36, // position(3) + normal(3) + color(3) = 9 floats * 4 bytes
+            arrayStride: FLOATS_PER_VERTEX * 4, // position(3) + normal(3) + uv(2) = 8 floats * 4 bytes
             attributes: [
               { shaderLocation: 0, offset: 0, format: 'float32x3' },
               { shaderLocation: 1, offset: 12, format: 'float32x3' },
-              { shaderLocation: 2, offset: 24, format: 'float32x3' },
+              { shaderLocation: 2, offset: 24, format: 'float32x2' },
             ],
           },
         ],
@@ -347,6 +353,50 @@ export class Renderer {
     this.highlightBuffer = this.device.createBuffer({
       size: CUBE_EDGES.byteLength,
       usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    });
+  }
+
+  /**
+   * @description 아틀라스 PNG를 GPU 텍스처로 올리고 블록 파이프라인의 group 1에 묶는 함수
+   *
+   * 블록 텍스처를 한 장에 모아두면 블록 종류가 달라도 바인드 그룹을 바꿀 필요가 없어서,
+   * 청크마다 draw 한 번이라는 지금 구조를 그대로 유지할 수 있다.
+   */
+  private async createAtlas() {
+    const res = await fetch(ATLAS_URL);
+    if (!res.ok) throw new Error(`Failed to load ${ATLAS_URL}: ${res.status}`);
+    const bitmap = await createImageBitmap(await res.blob());
+
+    // rgba8unorm(비 sRGB)이라 PNG의 값이 변환 없이 그대로 셰이더에 들어온다.
+    // 기존 정점 색과 같은 색 공간으로 다뤄야 조명·안개 결과가 이전과 같은 톤으로 나온다.
+    const texture = this.device.createTexture({
+      size: [bitmap.width, bitmap.height],
+      format: 'rgba8unorm',
+      // copyExternalImageToTexture는 대상 텍스처에 RENDER_ATTACHMENT를 요구한다.
+      usage:
+        GPUTextureUsage.TEXTURE_BINDING |
+        GPUTextureUsage.COPY_DST |
+        GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    this.device.queue.copyExternalImageToTexture({ source: bitmap }, { texture }, [
+      bitmap.width,
+      bitmap.height,
+    ]);
+    bitmap.close();
+
+    // nearest: 16px 픽셀 아트를 확대해도 흐려지지 않게 텍셀을 그대로 찍는다.
+    // 밉맵이 없으므로 멀리서는 반짝임(모아레)이 생긴다 — 필요해지면 별도 이슈로.
+    const sampler = this.device.createSampler({
+      magFilter: 'nearest',
+      minFilter: 'nearest',
+    });
+
+    this.atlasBindGroup = this.device.createBindGroup({
+      layout: this.blockPipeline.getBindGroupLayout(1),
+      entries: [
+        { binding: 0, resource: texture.createView() },
+        { binding: 1, resource: sampler },
+      ],
     });
   }
 
