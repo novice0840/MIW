@@ -1,7 +1,7 @@
 // 16x16 블록 텍스처 타일 + 4x4 아틀라스(64x64) 생성기
 // 의존성 없음 — Node 내장 zlib으로 PNG를 직접 인코딩한다.
 //
-//   node tools/gen-textures.mjs public/textures
+//   npm run gen:textures   (= node tools/gen-textures.mjs public/textures)
 //
 // 색이나 패턴을 바꾸고 싶으면 아래 타일 함수를 고치고 다시 돌린다.
 // 픽셀을 직접 찍는 것보다 빠르고, 어떤 색을 썼는지가 코드로 남는다.
