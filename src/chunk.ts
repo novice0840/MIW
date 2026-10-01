@@ -10,21 +10,19 @@ const DIRT_DEPTH = 4;
 // position(3) + normal(3) + uv(2)
 export const FLOATS_PER_VERTEX = 8;
 
-// 타일 가장자리 UV(0 또는 1)를 안쪽으로 살짝 당기는 양 (타일 로컬 단위).
-// 경계에 딱 걸친 UV는 부동소수 오차로 옆 타일의 텍셀을 집어 이음매가 생길 수 있다.
-const TILE_INSET = 0.001;
-
 /**
  * @description 타일 번호와 타일 안의 로컬 좌표(0~1)를 아틀라스 전체 기준 UV로 바꾸는 함수
  *
  * 이미지 좌표계라 v=0이 타일의 위쪽이다.
+ *
+ * 타일 경계 UV를 그대로 쓴다. nearest 필터 + 밉맵 없음에서는 옆 타일이 번지지 않는다.
+ * linear 필터나 밉맵을 도입하면 경계에서 옆 타일 텍셀이 섞이므로
+ * 반 텍셀 inset이나 타일 간 여백이 필요해진다.
  */
 function atlasUV(tile: number, u: number, v: number): [number, number] {
   const col = tile % ATLAS_GRID;
   const row = Math.floor(tile / ATLAS_GRID);
-  const iu = TILE_INSET + u * (1 - 2 * TILE_INSET);
-  const iv = TILE_INSET + v * (1 - 2 * TILE_INSET);
-  return [(col + iu) / ATLAS_GRID, (row + iv) / ATLAS_GRID];
+  return [(col + u) / ATLAS_GRID, (row + v) / ATLAS_GRID];
 }
 
 /**
