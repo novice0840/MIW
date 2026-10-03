@@ -28,9 +28,10 @@ const CHEESE_SCALE_Y = 0.09;
 const CHEESE_MIN_DEPTH = 6;
 
 // 스파게티 동굴: 노이즈 두 개가 동시에 0 근처인 곳을 비운다. 폭이 클수록 터널이 굵다.
-const SPAGHETTI_WIDTH = 0.07;
-const SPAGHETTI_SCALE_XZ = 0.03;
-const SPAGHETTI_SCALE_Y = 0.05;
+const SPAGHETTI_WIDTH = 0.08;
+// 스케일을 줄이면 터널 전체가 확대된다 — 굵어지는 대신 드물어져서, 폭만 키울 때보다 지하가 덜 빈다.
+const SPAGHETTI_SCALE_XZ = 0.02;
+const SPAGHETTI_SCALE_Y = 0.035;
 // noise3d에는 seed가 없으므로, 좌표를 멀리 밀어서 서로 무관한 노이즈 두 개를 얻는다.
 const SPAGHETTI_OFFSET_A = 71.3;
 const SPAGHETTI_OFFSET_B = 157.9;
