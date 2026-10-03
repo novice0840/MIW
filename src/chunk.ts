@@ -295,12 +295,8 @@ export class Chunk {
   /**
    * @description (x, z) 기둥의 땅 높이 ground 위에 나무 한 그루를 놓는 함수
    *
-   * 모양 (top = 기둥 맨 위 블록의 y, 숫자는 잎 반경):
-   *   top + 1 : 반경 1, 모서리 제외 (+ 모양)
-   *   top     : 반경 1 (3×3)
-   *   top - 1 : 반경 2, 모서리 제외
-   *   top - 2 : 반경 2, 모서리 제외
-   * 모서리를 깎아야 정사각 상자가 아니라 둥근 덩어리처럼 보인다.
+   * top = 기둥 맨 위 블록의 y. 잎은 위로 갈수록 좁아지고,
+   * 모서리를 깎아 정사각 상자가 아니라 둥근 덩어리처럼 보이게 한다.
    */
   private placeTree(x: number, ground: number, z: number, trunk: number) {
     const top = ground + trunk - 1;
@@ -309,16 +305,23 @@ export class Chunk {
       this.setBlock(x, y, z, BlockType.Wood);
     }
 
-    for (let dy = -2; dy <= 1; dy++) {
-      const radius = dy < 0 ? LEAF_RADIUS : 1;
-      const cutCorners = dy !== 0;
-      for (let dz = -radius; dz <= radius; dz++) {
-        for (let dx = -radius; dx <= radius; dx++) {
-          if (cutCorners && Math.abs(dx) === radius && Math.abs(dz) === radius) continue;
-          // 기둥이나 지형을 덮어쓰지 않고 빈 칸만 잎으로 채운다.
-          if (this.getBlock(x + dx, top + dy, z + dz) !== BlockType.Air) continue;
-          this.setBlock(x + dx, top + dy, z + dz, BlockType.Leaves);
-        }
+    this.placeLeafLayer(x, top - 2, z, LEAF_RADIUS, true); // 5×5, 모서리 제외
+    this.placeLeafLayer(x, top - 1, z, LEAF_RADIUS, true); // 5×5, 모서리 제외
+    this.placeLeafLayer(x, top, z, 1, false); // 3×3
+    this.placeLeafLayer(x, top + 1, z, 1, true); // + 모양
+  }
+
+  /**
+   * @description (x, z)를 중심으로 높이 y에 한 변이 2 * radius + 1인 정사각형 잎 층을 까는 함수
+   * @param cutCorners true면 네 모서리 칸을 비운다
+   */
+  private placeLeafLayer(x: number, y: number, z: number, radius: number, cutCorners: boolean) {
+    for (let dz = -radius; dz <= radius; dz++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        if (cutCorners && Math.abs(dx) === radius && Math.abs(dz) === radius) continue;
+        // 기둥이나 지형을 덮어쓰지 않고 빈 칸만 잎으로 채운다.
+        if (this.getBlock(x + dx, y, z + dz) !== BlockType.Air) continue;
+        this.setBlock(x + dx, y, z + dz, BlockType.Leaves);
       }
     }
   }
