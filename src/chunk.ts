@@ -74,6 +74,37 @@ function surfaceBlock(height: number): BlockType {
 }
 
 /**
+ * @description 월드 좌표 (wx, y, wz)가 동굴(파낼 칸)인지 판정하는 함수
+ * @param ground 이 기둥의 지형 높이. 지표 위(y >= ground)는 이미 공기라 동굴이 아니다.
+ *
+ * 좌표와 지형 높이만 보고 답하는 순수 함수다. 블록 배열을 읽지 않으므로, 동굴을 파는
+ * 단계든 나무를 심는 단계든 "이 칸이 파이는가"를 생성 순서와 상관없이 물어볼 수 있다.
+ *
+ * - 치즈: 노이즈 하나가 임계값을 넘는 곳 → 덩어리 모양의 넓은 공동
+ * - 스파게티: 노이즈 두 개가 동시에 0 근처인 곳 → 가는 터널.
+ *   3D에서 노이즈 하나의 "0 근처"는 얇은 판(면)이 되고, 판 두 장이 교차하는 곳이 선(터널)이 된다.
+ *
+ * 스파게티는 지표까지 뚫을 수 있어 동굴 입구가 된다.
+ * 최하단 y = 0은 파지 않아 월드 바닥이 뚫리지 않는다.
+ */
+function isCave(wx: number, y: number, wz: number, ground: number): boolean {
+  if (y < 1 || y >= ground) return false;
+
+  const cheese =
+    y < ground - CHEESE_MIN_DEPTH &&
+    noise3d(wx * CHEESE_SCALE_XZ, y * CHEESE_SCALE_Y, wz * CHEESE_SCALE_XZ) > CHEESE_THRESHOLD;
+  if (cheese) return true;
+
+  const sx = wx * SPAGHETTI_SCALE_XZ;
+  const sy = y * SPAGHETTI_SCALE_Y;
+  const sz = wz * SPAGHETTI_SCALE_XZ;
+  return (
+    Math.abs(noise3d(sx + SPAGHETTI_OFFSET_A, sy, sz)) < SPAGHETTI_WIDTH &&
+    Math.abs(noise3d(sx, sy, sz + SPAGHETTI_OFFSET_B)) < SPAGHETTI_WIDTH
+  );
+}
+
+/**
  * @description 기둥의 특정 높이 y에 들어갈 블록 종류를 결정하는 함수
  * @param height 이 기둥의 지형 높이
  * @param surface 이 기둥의 표면 블록 종류
@@ -224,9 +255,10 @@ export class Chunk {
   /**
    * @description 청크의 블록을 채우는 함수
    *
-   * 지형 → 동굴 → 나무 순서로 진행한다.
-   * 나무는 "표면이 잔디인가"를 보고 심으므로 동굴을 판 뒤에 놓아야 한다 — 그래야
-   * 동굴 입구 위에 나무가 떠 있거나, 동굴이 나무 기둥을 자르는 일이 없다.
+   * 지형을 채운 뒤 동굴과 나무를 얹는다. 동굴과 나무는 서로가 고친 블록을 읽지 않고
+   * 좌표·높이맵·isCave만 보고 판단하므로, 둘의 순서를 바꿔도 결과가 같다.
+   * - 동굴은 지표 아래(y < ground)만, 나무는 지표 위(y >= ground)만 건드려 칸이 겹치지 않는다
+   * - 나무는 표면이 파이는 자리(isCave)를 직접 물어보고 피한다
    */
   private generate() {
     const heights = this.generateTerrain();
@@ -271,17 +303,10 @@ export class Chunk {
   }
 
   /**
-   * @description 땅 속을 3D 노이즈로 파내 동굴을 만드는 함수
+   * @description 땅 속에서 isCave가 참인 칸을 공기로 바꿔 동굴을 만드는 함수
    *
-   * 블록마다 그 좌표의 노이즈 값만 보고 공기로 바꿀지 정한다. 이웃 블록이나 이웃 청크를
-   * 볼 필요가 없어, 청크 경계에서도 동굴이 끊김 없이 이어진다.
-   *
-   * - 치즈: 노이즈 하나가 임계값을 넘는 곳 → 덩어리 모양의 넓은 공동
-   * - 스파게티: 노이즈 두 개가 동시에 0 근처인 곳 → 가는 터널.
-   *   3D에서 노이즈 하나의 "0 근처"는 얇은 판(면)이 되고, 판 두 장이 교차하는 곳이 선(터널)이 된다.
-   *
-   * 스파게티는 지표까지 뚫을 수 있어 동굴 입구가 된다.
-   * 최하단 y = 0은 파지 않아 월드 바닥이 뚫리지 않는다.
+   * 블록마다 그 좌표만 보고 판정하므로 이웃 청크를 볼 필요가 없어,
+   * 청크 경계에서도 동굴이 끊김 없이 이어진다.
    */
   private carveCaves(heights: Uint8Array) {
     for (let z = 0; z < CHUNK_SIZE; z++) {
@@ -292,19 +317,7 @@ export class Chunk {
 
         // 땅이 있는 칸(y < ground)만 검사한다. 지표 위는 이미 공기라 노이즈 계산을 건너뛴다.
         for (let y = 1; y < ground; y++) {
-          const cheese =
-            y < ground - CHEESE_MIN_DEPTH &&
-            noise3d(wx * CHEESE_SCALE_XZ, y * CHEESE_SCALE_Y, wz * CHEESE_SCALE_XZ) >
-              CHEESE_THRESHOLD;
-
-          const sx = wx * SPAGHETTI_SCALE_XZ;
-          const sy = y * SPAGHETTI_SCALE_Y;
-          const sz = wz * SPAGHETTI_SCALE_XZ;
-          const spaghetti =
-            Math.abs(noise3d(sx + SPAGHETTI_OFFSET_A, sy, sz)) < SPAGHETTI_WIDTH &&
-            Math.abs(noise3d(sx, sy, sz + SPAGHETTI_OFFSET_B)) < SPAGHETTI_WIDTH;
-
-          if (cheese || spaghetti) this.setBlock(x, y, z, BlockType.Air);
+          if (isCave(wx, y, wz, ground)) this.setBlock(x, y, z, BlockType.Air);
         }
       }
     }
@@ -331,8 +344,11 @@ export class Chunk {
         const wz = this.cz * CHUNK_SIZE + z;
         if (hash2d(wx, wz, SEED_TREE_PLACE) >= TREE_CHANCE) continue;
 
+        // 블록 배열 대신 지형 규칙과 isCave로 판단한다 — 동굴을 이미 팠는지와 상관없이 같은 답이 나온다.
         const ground = heights[z * CHUNK_SIZE + x];
-        if (this.getBlock(x, ground - 1, z) !== BlockType.Grass) continue;
+        if (surfaceBlock(ground) !== BlockType.Grass) continue;
+        if (isCave(wx, ground - 1, wz, ground)) continue; // 표면이 파이는 동굴 입구 자리
+
 
         const tooClose = planted.some(
           ([px, pz]) => Math.max(Math.abs(px - x), Math.abs(pz - z)) < TREE_MIN_GAP,
@@ -345,7 +361,7 @@ export class Chunk {
         // 잎 꼭대기(기둥 맨 위 + 1)가 월드 높이를 넘으면 심지 않는다.
         if (ground + trunk >= WORLD_HEIGHT) continue;
 
-        this.placeTree(x, ground, z, trunk);
+        this.placeTree(x, ground, z, trunk, heights);
         planted.push([x, z]);
       }
     }
@@ -357,28 +373,39 @@ export class Chunk {
    * top = 기둥 맨 위 블록의 y. 잎은 위로 갈수록 좁아지고,
    * 모서리를 깎아 정사각 상자가 아니라 둥근 덩어리처럼 보이게 한다.
    */
-  private placeTree(x: number, ground: number, z: number, trunk: number) {
+  private placeTree(x: number, ground: number, z: number, trunk: number, heights: Uint8Array) {
     const top = ground + trunk - 1;
 
     for (let y = ground; y <= top; y++) {
       this.setBlock(x, y, z, BlockType.Wood);
     }
 
-    this.placeLeafLayer(x, top - 2, z, LEAF_RADIUS, true); // 5×5, 모서리 제외
-    this.placeLeafLayer(x, top - 1, z, LEAF_RADIUS, true); // 5×5, 모서리 제외
-    this.placeLeafLayer(x, top, z, 1, false); // 3×3
-    this.placeLeafLayer(x, top + 1, z, 1, true); // + 모양
+    this.placeLeafLayer(x, top - 2, z, LEAF_RADIUS, true, heights); // 5×5, 모서리 제외
+    this.placeLeafLayer(x, top - 1, z, LEAF_RADIUS, true, heights); // 5×5, 모서리 제외
+    this.placeLeafLayer(x, top, z, 1, false, heights); // 3×3
+    this.placeLeafLayer(x, top + 1, z, 1, true, heights); // + 모양
   }
 
   /**
    * @description (x, z)를 중심으로 높이 y에 한 변이 2 * radius + 1인 정사각형 잎 층을 까는 함수
    * @param cutCorners true면 네 모서리 칸을 비운다
+   * @param heights 기둥별 지형 높이. 잎이 지형 속으로 들어가지 않게 막는 데 쓴다.
    */
-  private placeLeafLayer(x: number, y: number, z: number, radius: number, cutCorners: boolean) {
+  private placeLeafLayer(
+    x: number,
+    y: number,
+    z: number,
+    radius: number,
+    cutCorners: boolean,
+    heights: Uint8Array,
+  ) {
     for (let dz = -radius; dz <= radius; dz++) {
       for (let dx = -radius; dx <= radius; dx++) {
         if (cutCorners && Math.abs(dx) === radius && Math.abs(dz) === radius) continue;
-        // 기둥이나 지형을 덮어쓰지 않고 빈 칸만 잎으로 채운다.
+        // 지형 높이 아래는 잎을 두지 않는다. 블록이 Air인지만 보면, 옆 언덕 속 동굴이
+        // 이미 파였을 때(동굴 → 나무 순서) 그 빈 칸에 잎이 박혀 생성 순서에 따라 결과가 달라진다.
+        if (y < heights[(z + dz) * CHUNK_SIZE + (x + dx)]) continue;
+        // 기둥이나 다른 나무의 잎을 덮어쓰지 않고 빈 칸만 잎으로 채운다.
         if (this.getBlock(x + dx, y, z + dz) !== BlockType.Air) continue;
         this.setBlock(x + dx, y, z + dz, BlockType.Leaves);
       }
