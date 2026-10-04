@@ -28,13 +28,18 @@ const CHEESE_SCALE_Y = 0.09;
 const CHEESE_MIN_DEPTH = 6;
 
 // 스파게티 동굴: 노이즈 두 개가 동시에 0 근처인 곳을 비운다. 폭이 클수록 터널이 굵다.
-const SPAGHETTI_WIDTH = 0.08;
+// 폭은 고정값이 아니라 BASE를 중심으로 굵기 노이즈만큼 오르내린다 — 굵기가 일정하면 하수관처럼 보인다.
+const SPAGHETTI_WIDTH_BASE = 0.08;
+const SPAGHETTI_WIDTH_VARIATION = 0.08;
+// 굵기 노이즈의 주파수. 터널 모양 노이즈보다 낮게 줘서, 한 터널 안에서 굵기가 천천히 변하게 한다.
+const SPAGHETTI_THICKNESS_SCALE = 0.012;
 // 스케일을 줄이면 터널 전체가 확대된다 — 굵어지는 대신 드물어져서, 폭만 키울 때보다 지하가 덜 빈다.
 const SPAGHETTI_SCALE_XZ = 0.02;
 const SPAGHETTI_SCALE_Y = 0.035;
 // noise3d에는 seed가 없으므로, 좌표를 멀리 밀어서 서로 무관한 노이즈 두 개를 얻는다.
 const SPAGHETTI_OFFSET_A = 71.3;
 const SPAGHETTI_OFFSET_B = 157.9;
+const SPAGHETTI_OFFSET_THICKNESS = 233.7;
 
 // position(3) + normal(3) + uv(2)
 export const FLOATS_PER_VERTEX = 8;
@@ -95,12 +100,18 @@ function isCave(wx: number, y: number, wz: number, ground: number): boolean {
     noise3d(wx * CHEESE_SCALE_XZ, y * CHEESE_SCALE_Y, wz * CHEESE_SCALE_XZ) > CHEESE_THRESHOLD;
   if (cheese) return true;
 
+  // 이 위치의 터널 폭. 굵기 노이즈(대략 -1 ~ 1)만큼 BASE에서 오르내린다.
+  const t = SPAGHETTI_THICKNESS_SCALE;
+  const width =
+    SPAGHETTI_WIDTH_BASE +
+    noise3d(wx * t + SPAGHETTI_OFFSET_THICKNESS, y * t, wz * t) * SPAGHETTI_WIDTH_VARIATION;
+
   const sx = wx * SPAGHETTI_SCALE_XZ;
   const sy = y * SPAGHETTI_SCALE_Y;
   const sz = wz * SPAGHETTI_SCALE_XZ;
   return (
-    Math.abs(noise3d(sx + SPAGHETTI_OFFSET_A, sy, sz)) < SPAGHETTI_WIDTH &&
-    Math.abs(noise3d(sx, sy, sz + SPAGHETTI_OFFSET_B)) < SPAGHETTI_WIDTH
+    Math.abs(noise3d(sx + SPAGHETTI_OFFSET_A, sy, sz)) < width &&
+    Math.abs(noise3d(sx, sy, sz + SPAGHETTI_OFFSET_B)) < width
   );
 }
 
